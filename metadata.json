@@ -1,0 +1,5 @@
+{
+  "name": "Healio",
+  "description": "An AI-powered healthcare assistant for symptom analysis, personalized health suggestions, and appointment scheduling.",
+  "requestFramePermissions": []
+}

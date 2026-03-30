@@ -1,0 +1,81 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Outfit", sans-serif;
+  
+  /* Healio Design System Colors */
+  --color-primary: #059669; /* emerald-600 */
+  --color-primary-hover: #047857; /* emerald-700 */
+  --color-surface: #F9FAFB; /* Off-White */
+  --color-text-charcoal: #1A1C1E; /* Deep Charcoal */
+  
+  /* Spacing Scale */
+  --spacing-xs: 0.5rem;
+  --spacing-sm: 1rem;
+  --spacing-md: 1.5rem;
+  --spacing-lg: 2rem;
+  --spacing-xl: 4rem;
+  
+  /* Card Tokens */
+  --radius-card: 24px;
+  --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+}
+
+@layer base {
+  :root {
+    --background: 210 40% 98%;
+    --foreground: 210 10% 11%;
+  }
+}
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=Outfit:wght@500;600;700&display=swap');
+
+body {
+  font-family: var(--font-sans);
+  @apply bg-[#F9FAFB] text-slate-900;
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+/* Typography Hierarchy */
+h1, .healio-h1 {
+  @apply text-4xl font-black tracking-tight text-slate-900;
+}
+
+h2, .healio-h2 {
+  @apply text-2xl font-bold text-slate-900;
+}
+
+p, .healio-body {
+  @apply text-base leading-relaxed text-slate-600;
+}
+
+/* Island Card System */
+.healio-card {
+  @apply bg-white rounded-[24px] p-6 shadow-sm border border-slate-100 transition-all duration-300;
+}
+
+/* Standardized Buttons */
+.btn-primary {
+  @apply bg-emerald-600 text-white px-6 py-3 rounded-full font-semibold hover:bg-emerald-700 transition-all active:scale-95;
+}
+
+.btn-secondary {
+  @apply bg-slate-100 text-slate-900 px-6 py-3 rounded-full font-semibold hover:bg-slate-200 transition-all active:scale-95;
+}
+
+/* Standardized Inputs */
+.healio-input {
+  @apply bg-slate-50 border-none focus:ring-2 focus:ring-emerald-500 rounded-2xl px-4 py-3 text-slate-900 placeholder-slate-400 outline-none transition-all;
+}
+
+/* Utility Classes */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
