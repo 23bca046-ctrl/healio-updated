@@ -1,39 +1,125 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
-import { getFirestore, doc, setDoc, getDoc, collection, query, where, onSnapshot } from 'firebase/firestore';
-import firebaseConfig from '../firebase-applet-config.json';
+import {
+  getAuth,
+  onAuthStateChanged as fbOnAuthStateChanged,
+  signOut as fbSignOut,
+  updateProfile as fbUpdateProfile,
+  User,
+} from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
 
-const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
-export const googleProvider = new GoogleAuthProvider();
-googleProvider.setCustomParameters({ prompt: 'select_account' });
+// Firebase configuration
+const firebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+};
 
-export const signInWithGoogle = async () => {
+// Validate Firebase configuration
+const validateFirebaseConfig = (): boolean => {
+  const requiredFields = [
+    'apiKey',
+    'authDomain',
+    'projectId',
+    'storageBucket',
+    'messagingSenderId',
+    'appId',
+  ];
+
+  const missingFields = requiredFields.filter(
+    (field) => !firebaseConfig[field as keyof typeof firebaseConfig]
+  );
+
+  if (missingFields.length > 0) {
+    console.warn(
+      `Firebase configuration incomplete. Missing: ${missingFields.join(', ')}`
+    );
+    return false;
+  }
+
+  return true;
+};
+
+// Initialize Firebase
+let app;
+let auth;
+let db;
+
+try {
+  if (validateFirebaseConfig()) {
+    app = initializeApp(firebaseConfig);
+    auth = getAuth(app);
+    db = getFirestore(app);
+    console.log('Firebase initialized successfully');
+  } else {
+    console.warn('Firebase not initialized due to missing configuration');
+  }
+} catch (error) {
+  console.error('Firebase initialization error:', error);
+}
+
+// Export types
+export type FirebaseUser = User | null;
+
+// Wrapped auth functions with error handling
+export const onAuthStateChanged = (callback: (user: FirebaseUser) => void) => {
+  if (!auth) {
+    console.error('Auth not initialized');
+    callback(null);
+    return () => {};
+  }
+
   try {
-    const result = await signInWithPopup(auth, googleProvider);
-    const user = result.user;
-    
-    // Create user profile in Firestore if it doesn't exist
-    const userRef = doc(db, 'users', user.uid);
-    const userSnap = await getDoc(userRef);
-    
-    if (!userSnap.exists()) {
-      await setDoc(userRef, {
-        uid: user.uid,
-        displayName: user.displayName,
-        email: user.email,
-        photoURL: user.photoURL,
-        healthScore: 80, // Default score
-        createdAt: new Date().toISOString(),
-      });
-    }
-    
-    return user;
+    return fbOnAuthStateChanged(auth, (user) => {
+      try {
+        callback(user);
+      } catch (error) {
+        console.error('Error in auth state callback:', error);
+      }
+    });
   } catch (error) {
-    console.error("Error signing in with Google:", error);
+    console.error('Error setting up auth listener:', error);
+    return () => {};
+  }
+};
+
+export const signOut = async (): Promise<void> => {
+  if (!auth) {
+    throw new Error('Auth not initialized');
+  }
+
+  try {
+    await fbSignOut(auth);
+    console.log('User signed out successfully');
+  } catch (error) {
+    console.error('Error signing out:', error);
     throw error;
   }
 };
 
-export const logout = () => signOut(auth);
+export const updateProfile = async (
+  user: FirebaseUser,
+  updates: { displayName?: string; photoURL?: string }
+): Promise<void> => {
+  if (!user) {
+    throw new Error('No user logged in');
+  }
+
+  try {
+    await fbUpdateProfile(user, updates);
+    console.log('Profile updated successfully');
+  } catch (error) {
+    console.error('Error updating profile:', error);
+    throw error;
+  }
+};
+
+// Export instances
+export { auth, db, app };
+
+// Export Firebase modules for use in components
+export * from 'firebase/auth';
+export * from 'firebase/firestore';
