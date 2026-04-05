@@ -1,4 +1,4 @@
-import { GoogleGenAI, Type } from '@google/genai';
+import { GoogleGenAI, Type } from "@google/genai";
 
 const SYSTEM_INSTRUCTION = `You are Healio, a professional AI healthcare assistant. 
 Your primary goal is to help users analyze their symptoms and provide preliminary medical guidance.
@@ -12,39 +12,26 @@ Guidelines:
 6. Be empathetic, professional, and clear.
 7. Use Markdown for formatting.`;
 
-/**
- * Analyze symptoms using Google Gemini AI
- * @param message User's symptom description
- * @param history Chat history for context
- * @returns Analysis from AI
- */
 export async function analyzeSymptoms(
   message: string,
-  history: Array<{ role: 'user' | 'model'; content: string }> = []
-): Promise<string> {
+  history: { role: 'user' | 'model'; content: string }[] = []
+) {
+  // ✅ USES YOUR GEMINI API KEY FROM .env
+  const apiKey = process.env.GEMINI_API_KEY || import.meta.env.VITE_GEMINI_API_KEY;
+  
+  if (!apiKey) {
+    throw new Error('GEMINI_API_KEY is not configured in .env file');
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
+  const model = "gemini-1.5-flash";
+
   try {
-    // Validate inputs
-    if (!message || message.trim().length === 0) {
-      throw new Error('Please describe your symptoms');
-    }
-
-    // Get API key from environment
-    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-    if (!apiKey) {
-      throw new Error('Gemini API key is not configured. Please set VITE_GEMINI_API_KEY in your .env file');
-    }
-
-    // Initialize Gemini AI
-    const ai = new GoogleGenAI({ apiKey });
-    const model = 'gemini-1.5-flash';
-
-    // Format chat history
     const chatHistory = history.map((msg) => ({
       role: msg.role,
       parts: [{ text: msg.content }],
     }));
 
-    // Create chat session
     const chat = ai.chats.create({
       model,
       config: {
@@ -53,115 +40,65 @@ export async function analyzeSymptoms(
       history: chatHistory,
     });
 
-    // Send message and get response
     const response = await chat.sendMessage({ message });
 
-    return (
-      response.text ||
-      "I'm sorry, I couldn't analyze that. Please try again."
-    );
+    return response.text || "I'm sorry, I couldn't analyze that. Please try again.";
   } catch (error) {
-    console.error('Gemini API Error:', error);
-    
-    if (error instanceof Error) {
-      // Network errors
-      if (error.message.includes('Network')) {
-        return 'Network error. Please check your internet connection and try again.';
-      }
-      // API key errors
-      if (error.message.includes('API key')) {
-        return error.message;
-      }
-      // Other known errors
-      return `Error: ${error.message}`;
-    }
-    
-    return 'An error occurred while analyzing your symptoms. Please check your connection or try again later.';
+    console.error("Gemini API Error:", error);
+    throw new Error(`Failed to analyze symptoms: ${error.message}`);
   }
 }
 
-/**
- * Generate a structured symptom report
- * @param message Original user message
- * @param analysis AI analysis result
- * @returns Structured report
- */
-export async function getSymptomReport(
-  message: string,
-  analysis: string
-): Promise<{
-  symptoms: string[];
-  analysis: string;
-  recommendations: string;
-  severity: 'low' | 'medium' | 'high';
-} | null> {
+export async function getSymptomReport(message: string, analysis: string) {
+  const apiKey = process.env.GEMINI_API_KEY || import.meta.env.VITE_GEMINI_API_KEY;
+
+  if (!apiKey) {
+    throw new Error('GEMINI_API_KEY is not configured in .env file');
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
+  const model = "gemini-1.5-flash";
+
   try {
-    // Validate inputs
-    if (!message || !analysis) {
-      throw new Error('Message and analysis are required');
-    }
-
-    // Get API key from environment
-    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-    if (!apiKey) {
-      throw new Error('Gemini API key is not configured');
-    }
-
-    // Initialize Gemini AI
-    const ai = new GoogleGenAI({ apiKey });
-    const model = 'gemini-1.5-flash';
-
-    // Generate structured report
     const response = await ai.models.generateContent({
       model,
       contents: `Based on the user's message: "${message}" and the AI analysis: "${analysis}", extract a structured symptom report.`,
       config: {
-        systemInstruction:
-          'Extract a structured symptom report in JSON format.',
-        responseMimeType: 'application/json',
+        systemInstruction: "Extract a structured symptom report in JSON format.",
+        responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
           properties: {
             symptoms: {
               type: Type.ARRAY,
               items: { type: Type.STRING },
-              description: 'List of symptoms mentioned by the user.',
+              description: "List of symptoms mentioned by the user.",
             },
             analysis: {
               type: Type.STRING,
-              description: 'A brief summary of the analysis.',
+              description: "A brief summary of the analysis.",
             },
             recommendations: {
               type: Type.STRING,
-              description: 'Key recommendations.',
+              description: "Key recommendations.",
             },
             severity: {
               type: Type.STRING,
-              enum: ['low', 'medium', 'high'],
-              description: 'The estimated severity of the symptoms.',
+              enum: ["low", "medium", "high"],
+              description: "The estimated severity of the symptoms.",
             },
           },
-          required: ['symptoms', 'analysis', 'severity'],
+          required: ["symptoms", "analysis", "severity"],
         },
       },
     });
 
-    // Parse response
-    const text = response.text || '{}';
-    const cleanedText = text
-      .replace(/```json\n?|```/g, '')
-      .trim();
-    
+    const text = response.text || "{}";
+    const cleanedText = text.replace(/```json\n?|```/g, "").trim();
     const report = JSON.parse(cleanedText);
-    
-    return {
-      symptoms: report.symptoms || [],
-      analysis: report.analysis || '',
-      recommendations: report.recommendations || '',
-      severity: report.severity || 'medium',
-    };
+    return report;
   } catch (error) {
-    console.error('Gemini API Error (Report Extraction):', error);
+    console.error("Gemini API Error (Report Extraction):", error);
     return null;
   }
 }
